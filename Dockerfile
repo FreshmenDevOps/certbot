@@ -1,7 +1,5 @@
 # https://github.com/letsencrypt/letsencrypt/pull/431#issuecomment-103659297
-# it is more likely developers will already have ubuntu:trusty rather
-# than e.g. debian:jessie and image size differences are negligible
-FROM ubuntu:trusty
+FROM centos:7
 MAINTAINER Jakub Warmuz <jakub@warmuz.org>
 MAINTAINER William Budington <bill@eff.org>
 
@@ -12,7 +10,7 @@ EXPOSE 443
 # TODO: make sure --config-dir and --work-dir cannot be changed
 # through the CLI (certbot-docker wrapper that uses standalone
 # authenticator and text mode only?)
-VOLUME /etc/letsencrypt /var/lib/letsencrypt
+VOLUME /etc/letsencrypt /var/lib/letsencrypt /srv/www
 
 WORKDIR /opt/certbot
 
@@ -21,12 +19,12 @@ WORKDIR /opt/certbot
 # If <dest> doesn't exist, it is created along with all missing
 # directories in its path.
 
-ENV DEBIAN_FRONTEND=noninteractive
-
 COPY letsencrypt-auto-source/letsencrypt-auto /opt/certbot/src/letsencrypt-auto-source/letsencrypt-auto
+RUN yum update --quiet --assumeyes && \
+    yum install --quiet --assumeyes epel-release
 RUN /opt/certbot/src/letsencrypt-auto-source/letsencrypt-auto --os-packages-only && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* \
+    yum clean all && \
+    rm -rf /var/cache/yum \
            /tmp/* \
            /var/tmp/*
 
@@ -47,7 +45,6 @@ COPY setup.py README.rst CHANGES.rst MANIFEST.in letsencrypt-auto-source/pieces/
 
 COPY certbot /opt/certbot/src/certbot/
 COPY acme /opt/certbot/src/acme/
-COPY certbot-apache /opt/certbot/src/certbot-apache/
 COPY certbot-nginx /opt/certbot/src/certbot-nginx/
 
 
@@ -59,7 +56,6 @@ RUN /opt/certbot/venv/bin/python /opt/certbot/src/pipstrap.py && \
     /opt/certbot/venv/bin/pip install \
     -e /opt/certbot/src/acme \
     -e /opt/certbot/src \
-    -e /opt/certbot/src/certbot-apache \
     -e /opt/certbot/src/certbot-nginx
 
 # install in editable mode (-e) to save space: it's not possible to
